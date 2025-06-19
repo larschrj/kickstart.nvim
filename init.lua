@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -102,7 +102,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.o.relativenumber = true
+vim.o.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
 vim.o.mouse = 'a'
@@ -490,7 +490,12 @@ require('lazy').setup({
       { 'j-hui/fidget.nvim', opts = {} },
 
       -- Allows extra capabilities provided by blink.cmp
-      'saghen/blink.cmp',
+      {
+        'saghen/blink.cmp',
+        dependencies = { 'rafamadriz/friendly-snippets' },
+        version = '1.*',
+        opts = { fuzzy = { implementation = 'prefer_rust_with_warning' } },
+      },
     },
     config = function()
       -- Brief aside: **What is LSP?**
@@ -683,6 +688,36 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
+        julials = {
+          -- This is the recommended configuration for Neovim 0.11+
+          cmd = {
+            'julia',
+            '--project=~/.julia/environments/nvim-lspconfig',
+            '--startup-file=no',
+            '--history-file=no',
+            '-e',
+            [[
+              using Pkg
+              Pkg.instantiate()
+              using LanguageServer
+              depot_path = get(ENV, "JULIA_DEPOT_PATH", "")
+              project_path = let
+                  dirname(something(
+                      Base.load_path_expand((p = get(ENV, "JULIA_PROJECT", nothing); p === nothing ? nothing : isempty(p) ? nothing : p)),
+                      Base.current_project(),
+                      get(Base.load_path(), 1, nothing),
+                      Base.load_path_expand("@v#.#"),
+                  ))
+              end
+              @info "Running language server" VERSION pwd() project_path depot_path
+              server = LanguageServer.LanguageServerInstance(stdin, stdout, project_path, depot_path)
+              server.runlinter = true
+              run(server)
+            ]],
+          },
+          filetypes = { 'julia' },
+          root_dir = require('lspconfig.util').root_pattern('Project.toml', 'Manifest.toml'),
+        },
 
         lua_ls = {
           -- cmd = { ... },
@@ -732,6 +767,37 @@ require('lazy').setup({
             require('lspconfig')[server_name].setup(server)
           end,
         },
+      }
+
+      require('lspconfig').julials.setup {
+        capabilities = capabilities, -- Important: This passes the blink.cmp capabilities
+        cmd = {
+          'julia',
+          '--project=~/.julia/environments/nvim-lspconfig',
+          '--startup-file=no',
+          '--history-file=no',
+          '-e',
+          [[
+            using Pkg
+            Pkg.instantiate()
+            using LanguageServer
+            depot_path = get(ENV, "JULIA_DEPOT_PATH", "")
+            project_path = let
+                dirname(something(
+                    Base.load_path_expand((p = get(ENV, "JULIA_PROJECT", nothing); p === nothing ? nothing : isempty(p) ? nothing : p)),
+                    Base.current_project(),
+                    get(Base.load_path(), 1, nothing),
+                    Base.load_path_expand("@v#.#"),
+                ))
+            end
+            @info "Running language server" VERSION pwd() project_path depot_path
+            server = LanguageServer.LanguageServerInstance(stdin, stdout, project_path, depot_path)
+            server.runlinter = true
+            run(server)
+          ]],
+        },
+        filetypes = { 'julia' },
+        root_dir = require('lspconfig.util').root_pattern('Project.toml', 'Manifest.toml'),
       }
     end,
   },
@@ -984,7 +1050,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
